@@ -1,0 +1,77 @@
+﻿<Window x:Class="saya.frontend.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:local="clr-namespace:saya.frontend"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        Title="MainWindow"
+        Width="525"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        mc:Ignorable="d">
+    <Border Background="#eeeeee"
+            BorderThickness="8"
+            CornerRadius="8,8,8,8">
+        <Border.BorderBrush>
+            <SolidColorBrush Opacity="0.4" Color="Black" />
+        </Border.BorderBrush>
+        <StackPanel>
+            <TextBox Margin="8,8,8,8"
+                     VerticalContentAlignment="Center"
+                     Background="#e0e0e0"
+                     BorderThickness="0"
+                     FontFamily="Segoe UI"
+                     FontSize="32"
+                     Padding="8,5,8,5"
+                     Text="foobar" />
+            <ListView Margin="0,5,0,5"
+                      Background="Transparent"
+                      BorderThickness="0">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Height="48"
+                              Margin="5,0,5,0"
+                              HorizontalAlignment="Stretch">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="48" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="64" />
+                                </Grid.ColumnDefinitions>
+                                <Image Width="48" Height="48" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock FontSize="22">Safari</TextBlock>
+                                    <TextBlock FontSize="12" Foreground="#909090">c:/home/users/desktop/piyo</TextBlock>
+                                </StackPanel>
+                                <TextBlock Grid.Column="2"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontFamily="Segoe UI"
+                                           FontSize="20">
+                                    Ctrl+1
+                                </TextBlock>
+                            </Grid>
+                        </Grid>
+
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListItem />
+                <ListItem />
+                <ListItem />
+            </ListView>
+        </StackPanel>
+    </Border>
+</Window>
