@@ -29,10 +29,9 @@ namespace saya.core
         {
             foreach (var searchDirectory in SearchDirectories)
             {
-                var executables = EnumerateFileEntries(searchDirectory);
+                var executables = FileUtils.EnumerateFileEntries(searchDirectory);
                 foreach (var executableFilePath in executables)
                 {
-                    // FIXME: アクセス権限のないディレクトリ以下をスキャンしようとして死ぬ
                     switch (Path.GetExtension(executableFilePath)?.ToLowerInvariant())
                     {
                         case ".exe": // TODO: .exe の場合は実行ファイルのメタ情報も検索対象とする
@@ -68,33 +67,5 @@ namespace saya.core
             return lunchCandidateItems;
         }
 
-        private static IEnumerable<string> EnumerateFileEntries(string path)
-        {
-            var directories = Enumerable.Empty<string>();
-            try
-            {
-                directories = Directory.EnumerateDirectories(path);
-            }
-            catch (UnauthorizedAccessException) {}
-
-            foreach (var directoryPath in directories)
-            {
-                var files = Enumerable.Empty<string>();
-                try
-                {
-                    files = Directory.EnumerateFiles(directoryPath);
-                }
-                catch (UnauthorizedAccessException) { }
-                
-                foreach (var filePath in files)
-                {
-                    yield return filePath;
-                }
-                foreach (var filePath in EnumerateFileEntries(directoryPath))
-                {
-                    yield return filePath;
-                }
-            }
-        }
     }
 }

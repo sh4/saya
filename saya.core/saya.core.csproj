@@ -42,7 +42,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AlcorAbbreviationScorer.cs" />
-    <Compile Include="Class1.cs" />
+    <Compile Include="FileUtils.cs" />
     <Compile Include="ILaunchTask.cs" />
     <Compile Include="ILaunchTaskFinder.cs" />
     <Compile Include="ProcessLauncher.cs" />
