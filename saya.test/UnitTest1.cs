@@ -2,6 +2,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using saya.core;
 using Shell32;
+using System.Linq;
 using System.IO;
 using System.Diagnostics;
 using System.Collections.Generic;
@@ -107,23 +108,17 @@ namespace saya.test
             {
                 var expected = GetShell32LinkPath(shortcutPath);
                 var actual = FileUtils.GetShortcutPath(shortcutPath) ?? string.Empty;
-                Assert.AreEqual(expected, actual, shortcutPath);
+                Assert.AreEqual(expected, actual, true, System.Globalization.CultureInfo.InvariantCulture, shortcutPath);
             }
             catch (UnauthorizedAccessException)
             {
-                var actual = FileUtils.GetShortcutPath(shortcutPath);
-                if (actual != null)
+                try
                 {
-                    if (File.Exists(actual))
-                    {
-                    }
-                    else if (Directory.Exists(actual))
-                    {
-                    }
-                    else
-                    {
-                        Assert.Fail($"Shortcut target file is not found: {actual} (Shortcut file is '{shortcutPath}')");
-                    }
+                    FileUtils.GetShortcutPath(shortcutPath);
+                }
+                catch (Exception e)
+                {
+                    Assert.Fail($"Raised excpetion: {e} (Shortcut is '{shortcutPath}')");
                 }
             }
         }
@@ -143,11 +138,11 @@ namespace saya.test
     [TestClass]
     public class ShortcutParsePerformanceTeset
     {
-        private static readonly TimeSpan NeedForPerformanceTuningTime = TimeSpan.FromMilliseconds(100);
-
         [TestMethod]
         public void CompareParsePerformanceTest()
         {
+            var needForPerformanceTuningTime = TimeSpan.FromMilliseconds(10 * ShortcutUtils.GetLocalShortcuts().Count());
+
             var elapsed = ElapsedTime(() =>
             {
                 foreach (var path in ShortcutUtils.GetLocalShortcuts())
@@ -172,7 +167,7 @@ namespace saya.test
             });
 
             Assert.IsTrue(elapsed < shell32LinkParserElapsed, $"Elapsed time: {elapsed.Milliseconds}ms");
-            Assert.IsTrue(elapsed < NeedForPerformanceTuningTime, $"Elapsed time: {elapsed.Milliseconds}ms");
+            Assert.IsTrue(elapsed < needForPerformanceTuningTime, $"Elapsed time: {elapsed.Milliseconds}ms");
         }
 
         private static TimeSpan ElapsedTime(Action action)
