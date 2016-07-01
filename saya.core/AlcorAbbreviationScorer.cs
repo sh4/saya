@@ -61,6 +61,14 @@ namespace saya.core
 
         public static float Compute(string text, string abbreviation)
         {
+            if (text == null)
+            {
+                text = string.Empty;
+            }
+            if (abbreviation == null)
+            {
+                abbreviation = string.Empty;
+            }
             return Compute(
                 new StringRange(text) { Length = text.Length },
                 new StringRange(abbreviation) { Length = abbreviation.Length });

@@ -4,6 +4,6 @@
              xmlns:local="clr-namespace:saya.frontend"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <local:MainWindowVm x:Key="mainWindowVm" />
     </Application.Resources>
 </Application>

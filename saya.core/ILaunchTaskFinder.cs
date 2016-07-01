@@ -9,6 +9,6 @@ namespace saya.core
     public interface ILaunchTaskFinder
     {
         Task Sync();
-        Task<IEnumerable<string>> Find(string query);
+        Task<IEnumerable<ILaunchTask>> Find(string query);
     }
 }

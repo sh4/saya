@@ -2,12 +2,13 @@
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace saya.core
 {
     static public partial class FileUtils
     {
-        class Shortcut
+        public class Shortcut
         {
             public string LinkPath { get; private set; }
             public string TargetPath { get; private set; }
@@ -15,6 +16,25 @@ namespace saya.core
             public string Name { get; private set; }
             public string IconLocation { get; private set; }
             public string Arguments { get; private set; }
+
+            [DllImport("shell32.dll")]
+            private static extern bool SHGetPathFromIDListEx(byte[] pidl, [MarshalAs(UnmanagedType.LPWStr)]StringBuilder pszPath, int cchPath, uint options);
+
+            [DllImport("msi.dll", CharSet = CharSet.Unicode)]
+            private static extern uint MsiGetShortcutTarget(
+                string shortcutTarget, 
+                [MarshalAs(UnmanagedType.LPWStr)]StringBuilder productCode,
+                [MarshalAs(UnmanagedType.LPWStr)]StringBuilder featureId,
+                [MarshalAs(UnmanagedType.LPWStr)]StringBuilder componentCode);
+
+            [DllImport("msi.dll", CharSet = CharSet.Unicode)]
+            private static extern int MsiGetComponentPath(
+                string product,
+                string component,
+                [MarshalAs(UnmanagedType.LPWStr)]StringBuilder path,
+                ref int cchPath);
+
+            private const int _MAX_PATH = 260;
 
             [Flags]
             private enum LinkFlags : int
@@ -35,6 +55,8 @@ namespace saya.core
             private enum ExtraDataBlockSignature : uint
             {
                 EnvironmentVariableDataBlock = 0xA0000001,
+                DarwinDataBlock = 0xa0000006,
+                VistaAndAboveIDListDataBlock = 0xA000000C,
             }
 
             private static readonly int IgnoreHeaderSize =
@@ -57,6 +79,7 @@ namespace saya.core
             private static readonly int HeaderSize = 0x4c;
             private static readonly int LinkCLSIDSize = 0x10;
             private static readonly int LinkInfoHeaderSize = 0x1c;
+            private static readonly int GuidCharLength = 39;
 
             public Shortcut(string lnkFilePath)
             {
@@ -81,6 +104,7 @@ namespace saya.core
                 {
                     throw new InvalidDataException("Shortcut header size is 0x4c as required.");
                 }
+
                 var baseStream = reader.BaseStream;
                 baseStream.Seek(LinkCLSIDSize, SeekOrigin.Current);
 
@@ -91,8 +115,13 @@ namespace saya.core
 
                 if ((flags & LinkFlags.HasLinkTargetIDList) != 0)
                 {
-                    var idListSize = reader.ReadInt16();
-                    baseStream.Seek(idListSize, SeekOrigin.Current);
+                    var idListSize = reader.ReadUInt16();
+                    var idList = reader.ReadBytes(idListSize);
+                    if ((flags & LinkFlags.HasLinkInfo) == 0)
+                    {
+                        // advertise shortcut っぽいので MSI 経由で情報を得る
+                        TargetPath = GetMsiShortcutTargetPath(lnkFilePath);
+                    }
                 }
                 if ((flags & LinkFlags.HasLinkInfo) != 0)
                 {
@@ -106,7 +135,12 @@ namespace saya.core
                 {
                     var lnkFileDirectory = Path.GetDirectoryName(lnkFilePath);
                     var relativePath = ReadStringData(reader, flags);
-                    TargetPath = Path.GetFullPath(Path.Combine(lnkFileDirectory, relativePath));
+
+                    // 既に TargetPath が設定されていた時はそちらを優先する
+                    if (TargetPath == null)
+                    {
+                        TargetPath = Path.GetFullPath(Path.Combine(lnkFileDirectory, relativePath));
+                    }
                 }
                 if ((flags & LinkFlags.HasWorkingDir) != 0)
                 {
@@ -130,8 +164,8 @@ namespace saya.core
                     {
                         break; // terminal block
                     }
-                    var signature = (ExtraDataBlockSignature)reader.ReadUInt32();
-                    switch (signature)
+                    var signature = reader.ReadUInt32();
+                    switch ((ExtraDataBlockSignature)signature)
                     {
                         case ExtraDataBlockSignature.EnvironmentVariableDataBlock:
                             {
@@ -141,7 +175,18 @@ namespace saya.core
 
                                 var chars = reader.ReadBytes(TargetCharLength * sizeof(char));
                                 var envPath = Encoding.Unicode.GetString(chars).TrimEnd('\0');
+
                                 TargetPath = Environment.ExpandEnvironmentVariables(envPath);
+                            }
+                            break;
+                        case ExtraDataBlockSignature.DarwinDataBlock:
+                            // Advertise Shortcut の場合、パスではなくバイナリが格納されているので自力でパースできない
+                            // たぶん Windows Installer に格納されている DB 側の何らかのキーっぽい
+                            break;
+                        case ExtraDataBlockSignature.VistaAndAboveIDListDataBlock:
+                            {
+                                var idList = reader.ReadBytes(sectionSize - sizeof(int));
+                                TargetPath = GetPathFromIdList(idList);
                             }
                             break;
                         default:
@@ -151,6 +196,19 @@ namespace saya.core
                 }
 
                 LinkPath = lnkFilePath;
+            }
+
+            private string GetPathFromIdList(byte[] idList)
+            {
+                var linkTarget = new StringBuilder(_MAX_PATH);
+                if (SHGetPathFromIDListEx(idList, linkTarget, _MAX_PATH, 0))
+                {
+                    return linkTarget.ToString();
+                }
+                else
+                {
+                    return null;
+                }
             }
 
             private static string ReadStringData(BinaryReader reader, LinkFlags flags)
@@ -219,6 +277,56 @@ namespace saya.core
                 baseStream.Seek(infoPosition + linkInfoSize, SeekOrigin.Begin);
 
                 return localBasePath;
+            }
+
+            private string GetMsiShortcutTargetPath(string lnkFilePath)
+            {
+                var productCode = new StringBuilder(GuidCharLength);
+                var componentCode = new StringBuilder(GuidCharLength);
+                if (MsiGetShortcutTarget(lnkFilePath, productCode, null, componentCode) != 0)
+                {
+                    return null;
+                }
+                var path = new StringBuilder(_MAX_PATH);
+                var cchPath = _MAX_PATH;
+                if (MsiGetComponentPath(productCode.ToString(), componentCode.ToString(), path, ref cchPath) > 0)
+                {
+                    return path.ToString();
+                }
+                return null;
+            }
+        }
+
+        public class ShortcutEqualityComparer : IEqualityComparer<Shortcut>
+        {
+            public bool Equals(Shortcut x, Shortcut y)
+            {
+                return PathUtils.EqualsPath(x.TargetPath, y.TargetPath)
+                    && PathUtils.EqualsPath(x.WorkingDirectory, y.WorkingDirectory)
+                    && x.Arguments == y.Arguments;
+            }
+
+            public int GetHashCode(Shortcut obj)
+            {
+                if (obj == null)
+                {
+                    return 0;
+                }
+                if (obj.TargetPath == null)
+                {
+                    return PathUtils.NormalizePath(obj.LinkPath).GetHashCode();
+                }
+
+                var r = PathUtils.NormalizePath(obj.TargetPath).GetHashCode();
+                if (obj.WorkingDirectory != null)
+                {
+                    r ^= PathUtils.NormalizePath(obj.WorkingDirectory).GetHashCode();
+                }
+                if (obj.Arguments != null)
+                {
+                    r ^= obj.Arguments.GetHashCode();
+                }
+                return r;
             }
         }
     }

@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace saya.core
 {
     public interface ILaunchTask
     {
-        void Launch();
+        string Name { get; }
+        string Description { get; }
+        Task Launch();
     }
 }

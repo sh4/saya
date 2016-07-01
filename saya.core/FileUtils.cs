@@ -23,19 +23,20 @@ namespace saya.core
             }
             catch (UnauthorizedAccessException) { }
 
+            var files = Enumerable.Empty<string>();
+            try
+            {
+                files = Directory.EnumerateFiles(path);
+            }
+            catch (UnauthorizedAccessException) { }
+
+            foreach (var filePath in files)
+            {
+                yield return filePath;
+            }
+
             foreach (var directoryPath in directories)
             {
-                var files = Enumerable.Empty<string>();
-                try
-                {
-                    files = Directory.EnumerateFiles(directoryPath);
-                }
-                catch (UnauthorizedAccessException) { }
-
-                foreach (var filePath in files)
-                {
-                    yield return filePath;
-                }
                 foreach (var filePath in EnumerateFileEntries(directoryPath))
                 {
                     yield return filePath;

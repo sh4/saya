@@ -46,9 +46,16 @@
     <Compile Include="FileUtils.Shortcut.cs" />
     <Compile Include="ILaunchTask.cs" />
     <Compile Include="ILaunchTaskFinder.cs" />
+    <Compile Include="PathUtils.cs" />
     <Compile Include="ProcessLauncher.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="StartMenuTaskFinder.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\saya.core.native\saya.core.native.vcxproj">
+      <Project>{e74e0af3-2078-4a08-9bd8-a6d5857fa4df}</Project>
+      <Name>saya.core.native</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
