@@ -12,7 +12,7 @@ namespace saya
     {
         static void Main(string[] args)
         {
-            ILaunchTaskFinder finder = new StartMenuTaskFinder();
+            ILaunchTaskStore finder = new StartMenuTaskStore();
 
             var stopWatch = Stopwatch.StartNew();
             Console.WriteLine("FilePath list constructing...");

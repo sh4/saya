@@ -23,13 +23,15 @@ namespace saya.frontend
         public ReactiveCommand ScanCommand { get; private set; }
 
         private readonly int MaxResultsCount = 5;
-        private core.ILaunchTaskFinder TaskFinder = new core.StartMenuTaskFinder();
+        private core.ILaunchTaskRepository TaskRepository = new core.MemoryTaskRepository();
+        private core.AlcorAbbreviationTaskFinder TaskFinder = new core.AlcorAbbreviationTaskFinder();
         private ShellIcon ShellIcon = new ShellIcon();
         private CompositeDisposable ResultCompositeDisposable = new CompositeDisposable();
 
         public MainWindowVm()
         {
             // TODO: ちゃんとした実装に置き換える
+            TaskRepository.Register(new core.StartMenuTaskStore());
             Scan();
 
             CommandText = new ReactiveProperty<string>().AddTo(CompositeDisposable);
@@ -39,15 +41,24 @@ namespace saya.frontend
                 {
                     // 前回の検索結果を破棄する
                     ResetResultCompositeDisposable();
-                    var launchItems = TaskFinder.Find(x).Result;
+
+                    TaskFinder.Query = x;
+
+                    // 検索スコアの降順に並び替え
+                    var launchItems = TaskRepository
+                        .Find(TaskFinder).Result
+                        .OrderByDescending(y => y.Score)
+                        .Take(MaxResultsCount)
+                        .Select(y => y.LaunchTask);
+
                     // 新しい検索結果を次回の Dispose 対象とする
                     var results = launchItems
-                        .Take(MaxResultsCount)
                         .Select((y, i) => new CandidateLaunchItemVm(
                             y, 
                             GetIconImageSource(y),
                             "Ctrl+" + (i + 1)
                         ).AddTo(ResultCompositeDisposable));
+
                     return results.ToArray();
                 })
                 .ToReactiveProperty()
@@ -164,6 +175,8 @@ namespace saya.frontend
 
         private System.Windows.Media.ImageSource GetIconImageSource(core.ILaunchTask task)
         {
+            //return null;
+
             // FIXME: ダウンキャストのせいで密結合になってつらいのでなんとかする
 
             // saya.core には WPF 周りの UI 実装を組み入れたくない
@@ -181,7 +194,7 @@ namespace saya.frontend
 
         private void Scan()
         {
-            TaskFinder.Sync().Wait();
+            TaskRepository.Sync().Wait();
         }
     }
 }

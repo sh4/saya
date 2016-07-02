@@ -108,6 +108,14 @@ namespace saya.core
         public string Name { get; private set; }
         public string Description { get; private set; }
 
+        public IEnumerable<string> Aliases
+        {
+            get
+            {
+                yield return Name;
+            }
+        }
+
         public Task Launch()
         {
             if (SwitchExistsWindow())
@@ -121,11 +129,12 @@ namespace saya.core
                 UseShellExecute = true,
             };
 
-            // プロセスによっては Dispose すると例外が発生する
+            // プロセスによっては Dispose すると例外が発生するので Start するだけ
             Process.Start(startInfo);
 
             return Task.CompletedTask;
         }
+
 
         private bool SwitchExistsWindow()
         {

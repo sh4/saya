@@ -7,7 +7,7 @@ using System.IO;
 
 namespace saya.core
 {
-    public class StartMenuTaskFinder : ILaunchTaskFinder
+    public class StartMenuTaskStore : ILaunchTaskStore
     {
         private static readonly string[] SearchDirectories = new[]
         {
@@ -20,14 +20,8 @@ namespace saya.core
             Environment.ExpandEnvironmentVariables(@"%AppData%\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"),
         };
 
-        private class LaunchContext
-        {
-            public IEnumerable<string> Aliases { get; set; }
-            public ILaunchTask Task { get; set; }
-        }
-
         private HashSet<FileUtils.Shortcut> ShortcutStore = new HashSet<FileUtils.Shortcut>(new FileUtils.ShortcutEqualityComparer());
-        private List<LaunchContext> LaunchContexts = new List<LaunchContext>();
+        private List<ILaunchTask> Tasks = new List<ILaunchTask>();
 
         public Task Sync()
         {
@@ -38,13 +32,18 @@ namespace saya.core
             return Task.CompletedTask;
         }
 
-        public Task<IEnumerable<ILaunchTask>> Find(string query)
+        public Task<IEnumerable<ILaunchTask>> LaunchTasks()
         {
-            var lunchCandidateItems = LaunchContexts
-                .OrderByDescending(x => x.Aliases.Max(y => AlcorAbbreviationScorer.Compute(y, query)))
-                .Select(x => x.Task);
+            return Task.FromResult(Tasks.AsEnumerable());
+        }
 
-            return Task.FromResult(lunchCandidateItems);
+        public Task<IEnumerable<ILaunchTask>> Find(string query, IEnumerable<ILaunchTask> leastResult)
+        {
+            var candidateItems = leastResult
+                .OrderByDescending(x => AlcorAbbreviationScorer.Compute(x.Name, query))
+                .Select(x => x);
+
+            return Task.FromResult(candidateItems);
         }
 
         private void EnumerateExecutables(string searchDirectory)
@@ -57,14 +56,10 @@ namespace saya.core
                     case ".exe": // TODO: .exe の場合は実行ファイルのメタ情報も検索対象とする
                     case ".bat":
                     case ".cmd":
-                        LaunchContexts.Add(new LaunchContext
+                        Tasks.Add(new ProcessLaunchTask
                         {
-                            Aliases = new[] { Path.GetFileNameWithoutExtension(execPath) },
-                            Task = new ProcessLaunchTask
-                            {
-                                FilePath = execPath,
-                                ExistProcessFilePath = execPath,
-                            }
+                            FilePath = execPath,
+                            ExistProcessFilePath = execPath,
                         });
                         break;
                     case ".lnk":
@@ -83,15 +78,11 @@ namespace saya.core
                                     return; // 既に登録済みのショートカット
                                 }
                                 ShortcutStore.Add(shortcut);
-                                LaunchContexts.Add(new LaunchContext
+                                Tasks.Add(new ProcessLaunchTask
                                 {
-                                    Aliases = new[] { Path.GetFileNameWithoutExtension(execPath) },
-                                    Task = new ProcessLaunchTask
-                                    {
-                                        FilePath = execPath,
-                                        ExistProcessFilePath = shortcut.TargetPath,
-                                        ExistProcessArgument = shortcut.Arguments,
-                                    }
+                                    FilePath = execPath,
+                                    ExistProcessFilePath = shortcut.TargetPath,
+                                    ExistProcessArgument = shortcut.Arguments,
                                 });
                             }
                         }
