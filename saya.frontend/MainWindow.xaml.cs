@@ -38,6 +38,8 @@ namespace saya.frontend
             ContentRendered += (sender, e) => MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
             // リスト項目の左クリックは、選択中の項目を起動
             CandidateList.MouseLeftButtonUp += (sender, e) => Messenger.Default.Send(new LaunchMessage());
+            // ViewModel ãŒ IDisposable ã‚¤ãƒ³ã‚¿ãƒ¼ãµã‡ã™ã‚’å®Ÿè£…ã—ã¦ã„ã‚Œã° Dispose ã‚’è©¦ã¿ã‚‹
+            Closed += (sender, e) => (DataContext as IDisposable)?.Dispose();
         }
 
         private void EnableExToolWindowStyle()
