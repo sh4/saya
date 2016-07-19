@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace saya.core
 {
     /// <summary>
-    /// Alcore Abbreviation Scoring Algorithm
+    /// Alcor Abbreviation Scoring Algorithm
     /// https://github.com/quicksilver/Quicksilver/blob/master/Quicksilver/Code-QuickStepFoundation/NSString_BLTRExtensions.h
     /// http://steps.dodgson.org/bn/2009/09/12/
     /// </summary>
@@ -61,6 +61,14 @@ namespace saya.core
 
         public static float Compute(string text, string abbreviation)
         {
+            if (text == null)
+            {
+                text = string.Empty;
+            }
+            if (abbreviation == null)
+            {
+                abbreviation = string.Empty;
+            }
             return Compute(
                 new StringRange(text) { Length = text.Length },
                 new StringRange(abbreviation) { Length = abbreviation.Length });

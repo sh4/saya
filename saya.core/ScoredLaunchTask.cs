@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 
 namespace saya.core
 {
-    public class Class1
+    public class ScoredLaunchTask
     {
+        public float Score { get; set; }
+        public ILaunchTask LaunchTask { get; set; }
     }
 }
