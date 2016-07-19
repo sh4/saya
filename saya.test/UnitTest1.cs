@@ -127,23 +127,18 @@ namespace saya.test
         private static void AreEqualShortcut(string shortcutPath)
         {
             Assert.IsTrue(File.Exists(shortcutPath), $"File not found: {shortcutPath}");
+            string expected;
             try
             {
-                var expected = GetShell32LinkPath(shortcutPath);
-                var actual = FileUtils.GetShortcutPath(shortcutPath) ?? string.Empty;
-                Assert.AreEqual(expected, actual, true, System.Globalization.CultureInfo.InvariantCulture, shortcutPath);
+                expected = GetShell32LinkPath(shortcutPath);
             }
             catch (UnauthorizedAccessException)
             {
-                try
-                {
-                    FileUtils.GetShortcutPath(shortcutPath);
-                }
-                catch (Exception e)
-                {
-                    Assert.Fail($"Raised excpetion: {e} (Shortcut is '{shortcutPath}')");
-                }
+                // Shell API 側で例外が発生した場合、そのショートカットのテストはスキップ
+                return;
             }
+            var actual = FileUtils.GetShortcutPath(shortcutPath) ?? string.Empty;
+            Assert.AreEqual(expected, actual, true, System.Globalization.CultureInfo.InvariantCulture, shortcutPath);
         }
 
 #if false
