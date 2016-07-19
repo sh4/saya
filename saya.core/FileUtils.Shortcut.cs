@@ -121,6 +121,11 @@ namespace saya.core
                     {
                         // advertise shortcut っぽいので MSI 経由で情報を得る
                         TargetPath = GetMsiShortcutTargetPath(lnkFilePath);
+                        // MSI 経由で情報を得られない場合は IDLIST とみなしてパス取得を試みる
+                        if (string.IsNullOrEmpty(TargetPath))
+                        {
+                            TargetPath = GetPathFromIdList(idList);
+                        }
                     }
                 }
                 if ((flags & LinkFlags.HasLinkInfo) != 0)
