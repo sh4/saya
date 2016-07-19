@@ -176,33 +176,42 @@ namespace saya.test
         [TestMethod]
         public void CompareParsePerformanceTest()
         {
-            var needForPerformanceTuningTime = TimeSpan.FromMilliseconds(100 * ShortcutUtils.GetLocalShortcuts().Count());
+            var shortcutsCount = ShortcutUtils.GetLocalShortcuts().Count();
+            var needForPerformanceTuningTime = TimeSpan.FromMilliseconds(100 * shortcutsCount);
 
-            var elapsed = ElapsedTime(() =>
+            // Dryrun
+            LinkParse();
+            Shell32LinkParse();
+
+            // Production
+            var elapsed = ElapsedTime(LinkParse);
+            var shell32LinkParserElapsed = ElapsedTime(Shell32LinkParse);
+
+            Assert.IsTrue(elapsed < shell32LinkParserElapsed, $"Elapsed time: {elapsed.Milliseconds}ms < {shell32LinkParserElapsed.Milliseconds}ms ({shortcutsCount} shortcuts)");
+            Assert.IsTrue(elapsed < needForPerformanceTuningTime, $"Elapsed time: {elapsed.Milliseconds}ms < {needForPerformanceTuningTime} ms ({shortcutsCount} shortcuts)");
+        }
+
+        private static void Shell32LinkParse()
+        {
+            var shell32 = new Shell();
+            foreach (var path in ShortcutUtils.GetLocalShortcuts())
             {
-                foreach (var path in ShortcutUtils.GetLocalShortcuts())
+                var directoryPath = Path.GetDirectoryName(path);
+                var fileName = Path.GetFileName(path);
+                try
                 {
-                    FileUtils.GetShortcutPath(path);
+                    var targetPath = shell32.NameSpace(directoryPath).ParseName(fileName).GetLink.Path;
                 }
-            });
+                catch (UnauthorizedAccessException) { }
+            }
+        }
 
-            var shell32LinkParserElapsed = ElapsedTime(() =>
+        private static void LinkParse()
+        {
+            foreach (var path in ShortcutUtils.GetLocalShortcuts())
             {
-                var shell32 = new Shell();
-                foreach (var path in ShortcutUtils.GetLocalShortcuts())
-                {
-                    var directoryPath = Path.GetDirectoryName(path);
-                    var fileName = Path.GetFileName(path);
-                    try
-                    {
-                        var targetPath = shell32.NameSpace(directoryPath).ParseName(fileName).GetLink.Path;
-                    }
-                    catch (UnauthorizedAccessException) { }
-                }
-            });
-
-            Assert.IsTrue(elapsed < shell32LinkParserElapsed, $"Elapsed time: {elapsed.Milliseconds}ms");
-            Assert.IsTrue(elapsed < needForPerformanceTuningTime, $"Elapsed time: {elapsed.Milliseconds}ms");
+                FileUtils.GetShortcutPath(path);
+            }
         }
 
         private static TimeSpan ElapsedTime(Action action)
