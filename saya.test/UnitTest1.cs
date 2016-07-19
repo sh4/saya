@@ -173,7 +173,7 @@ namespace saya.test
         [TestMethod]
         public void CompareParsePerformanceTest()
         {
-            var needForPerformanceTuningTime = TimeSpan.FromMilliseconds(10 * ShortcutUtils.GetLocalShortcuts().Count());
+            var needForPerformanceTuningTime = TimeSpan.FromMilliseconds(100 * ShortcutUtils.GetLocalShortcuts().Count());
 
             var elapsed = ElapsedTime(() =>
             {
