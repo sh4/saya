@@ -32,18 +32,9 @@ namespace saya.core
             return Task.CompletedTask;
         }
 
-        public Task<IEnumerable<ILaunchTask>> LaunchTasks()
+        public IEnumerable<ScoredLaunchTask> Find(ILaunchTaskFinder finder)
         {
-            return Task.FromResult(Tasks.AsEnumerable());
-        }
-
-        public Task<IEnumerable<ILaunchTask>> Find(string query, IEnumerable<ILaunchTask> leastResult)
-        {
-            var candidateItems = leastResult
-                .OrderByDescending(x => AlcorAbbreviationScorer.Compute(x.Name, query))
-                .Select(x => x);
-
-            return Task.FromResult(candidateItems);
+            return finder.Find(Tasks);
         }
 
         private void EnumerateExecutables(string searchDirectory)
@@ -63,28 +54,24 @@ namespace saya.core
                         });
                         break;
                     case ".lnk":
-                        // TODO: リンク先のパスを正規化して同一の .exe/.bat 等を指し示したい
-                        //       …のだが、実際にやろうとすると引数を付与した別のショートカットだったりして同一視するとまずい
+                        try
                         {
                             var shortcut = new FileUtils.Shortcut(execPath);
-                            if (Directory.Exists(shortcut.TargetPath))
+                            if (ShortcutStore.Contains(shortcut))
                             {
-                                EnumerateExecutables(shortcut.TargetPath);
+                                return; // 既に登録済みのショートカット
                             }
-                            else
+                            ShortcutStore.Add(shortcut);
+                            Tasks.Add(new ProcessLaunchTask
                             {
-                                if (ShortcutStore.Contains(shortcut))
-                                {
-                                    return; // 既に登録済みのショートカット
-                                }
-                                ShortcutStore.Add(shortcut);
-                                Tasks.Add(new ProcessLaunchTask
-                                {
-                                    FilePath = execPath,
-                                    ExistProcessFilePath = shortcut.TargetPath,
-                                    ExistProcessArgument = shortcut.Arguments,
-                                });
-                            }
+                                FilePath = execPath,
+                                ExistProcessFilePath = shortcut.TargetPath,
+                                ExistProcessArgument = shortcut.Arguments,
+                            });
+                        }
+                        catch (Exception)
+                        {
+                            // FIXME: ログを出すようになったら元に戻す
                         }
                         break;
                     default:
@@ -93,6 +80,10 @@ namespace saya.core
                 }
             }
 
+        }
+
+        public void Dispose()
+        {
         }
     }
 }

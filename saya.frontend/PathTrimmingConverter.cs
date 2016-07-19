@@ -62,7 +62,8 @@ namespace saya.frontend
             trimmedText += fileName;
 
             var directoryPath = Path.GetDirectoryName(text);
-            if (!MeasureGlyphsWidth(directoryPath, context))
+
+            if (!string.IsNullOrWhiteSpace(directoryPath)&& !MeasureGlyphsWidth(directoryPath, context))
             {
                 // パスの途中までしか入らなかった
                 return context.Builder.ToString() + trimmedText;
@@ -72,6 +73,8 @@ namespace saya.frontend
 
             // ディレクトリとパスの間にある区切り文字の幅を計算していないが、
             // 最初に "..." の幅を加算しているので問題にはならないはず
+
+            // ディレクトリがルートの場合(C:\)も加味していないが、同様の理由で問題にはならないはず...
             return text;
         }
 

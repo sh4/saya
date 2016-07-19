@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace saya.core
 {
-    public interface ILaunchTaskStore
+    public interface ILaunchTaskStore : IDisposable
     {
         Task Sync();
-        Task<IEnumerable<ILaunchTask>> LaunchTasks();
+        IEnumerable<ScoredLaunchTask> Find(ILaunchTaskFinder finder);
     }
 }

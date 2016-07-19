@@ -43,6 +43,7 @@
   <ItemGroup>
     <Compile Include="AlcorAbbreviationScorer.cs" />
     <Compile Include="AlcorAbbreviationTaskFinder.cs" />
+    <Compile Include="EverythingTaskStore.cs" />
     <Compile Include="FileUtils.cs" />
     <Compile Include="FileUtils.Shortcut.cs" />
     <Compile Include="ILaunchTask.cs" />

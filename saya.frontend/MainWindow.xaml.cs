@@ -15,6 +15,7 @@ namespace saya.frontend
         public class LaunchMessage {}
         public class ToggleMessage {}
         public class CloseMessage {}
+        public class ExitMessage {}
 
         [DllImport("user32.dll")]
         private static extern long GetWindowLongPtr(IntPtr hwnd, int index);
@@ -38,8 +39,12 @@ namespace saya.frontend
             ContentRendered += (sender, e) => MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
             // リスト項目の左クリックは、選択中の項目を起動
             CandidateList.MouseLeftButtonUp += (sender, e) => Messenger.Default.Send(new LaunchMessage());
-            // ViewModel が IDisposable インターふぇすを実装していれば Dispose を試みる
-            Closed += (sender, e) => (DataContext as IDisposable)?.Dispose();
+            // ViewModel が IDisposable インターフェースを実装していれば Dispose を試みる
+            Closed += (sender, e) =>
+            {
+                Messenger.Default.Send(new ExitMessage());
+                (DataContext as IDisposable)?.Dispose();
+            };
         }
 
         // Alt+Tab の切り替え対象のウインドウとしてリストアップされないようにする

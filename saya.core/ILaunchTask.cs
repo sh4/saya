@@ -7,6 +7,8 @@ namespace saya.core
     {
         string Name { get; }
         string Description { get; }
+        string FilePath { get; }
+        string FileExtension { get; }
 
         IEnumerable<string> Aliases { get; }
 

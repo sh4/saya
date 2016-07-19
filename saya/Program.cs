@@ -12,12 +12,12 @@ namespace saya
     {
         static void Main(string[] args)
         {
-            ILaunchTaskStore finder = new StartMenuTaskStore();
+            var store = new StartMenuTaskStore();
 
             var stopWatch = Stopwatch.StartNew();
             Console.WriteLine("FilePath list constructing...");
             Console.Out.Flush();
-            finder.Sync().Wait();
+            store.Sync().Wait();
             stopWatch.Stop();
             Console.WriteLine($"Done, Elapsed time = {stopWatch.ElapsedMilliseconds}ms");
             Console.Out.Flush();
@@ -29,10 +29,10 @@ namespace saya
                 {
                     return;
                 }
-                var lunchItems = finder.Find(text).Result;
-                foreach (var item in lunchItems.Take(5))
+                var launchItems = store.Find(new AlcorAbbreviationTaskFinder { Query = text });
+                foreach (var item in launchItems.OrderBy(x => x.Score).Take(5).Select(x => x.LaunchTask))
                 {
-                    Console.WriteLine(item);
+                    Console.WriteLine(item.Name);
                 }
 
             }

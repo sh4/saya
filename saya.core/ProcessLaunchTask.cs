@@ -100,8 +100,10 @@ namespace saya.core
                 m_FilePath = value;
                 Name = Path.GetFileNameWithoutExtension(m_FilePath);
                 Description = Path.GetDirectoryName(m_FilePath);
+                FileExtension = Path.GetExtension(m_FilePath)?.ToLowerInvariant();
             }
         }
+        public string FileExtension { get; private set; }
         public string ExistProcessFilePath { get; set; }
         public string ExistProcessArgument { get; set; }
 
@@ -130,6 +132,7 @@ namespace saya.core
             };
 
             // プロセスによっては Dispose すると例外が発生するので Start するだけ
+            // TODO: 変なプロセスを起動したときに Win32Exception が起きるので、そのハンドリング
             Process.Start(startInfo);
 
             return Task.CompletedTask;

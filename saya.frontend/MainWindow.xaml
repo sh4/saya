@@ -33,6 +33,7 @@
                      BorderThickness="0"
                      FontFamily="Segoe UI"
                      FontSize="32"
+                     InputMethod.PreferredImeState="Off"
                      Padding="8,5,8,5"
                      Text="{Binding CommandText.Value,
                                     UpdateSourceTrigger=PropertyChanged,
@@ -83,6 +84,14 @@
                     </Style>
                 </ListView.ItemContainerStyle>
                 -->
+                <ListView.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Command="{Binding LaunchCandidateItemCommand}" Header="起動" />
+                        <MenuItem Command="{Binding OpenCandidateItemPathCommand}" Header="ファイルの場所を開く" />
+                        <Separator />
+                        <MenuItem Command="{Binding CopyPathCommand}" Header="パスのコピー" />
+                    </ContextMenu>
+                </ListView.ContextMenu>
                 <ListView.ItemTemplate>
                     <DataTemplate>
                         <Grid Height="48" Margin="5,3,5,3">

@@ -16,13 +16,6 @@ namespace saya.core
 
         public static IEnumerable<string> EnumerateFileEntries(string path)
         {
-            var directories = Enumerable.Empty<string>();
-            try
-            {
-                directories = Directory.EnumerateDirectories(path);
-            }
-            catch (UnauthorizedAccessException) { }
-
             var files = Enumerable.Empty<string>();
             try
             {
@@ -34,6 +27,13 @@ namespace saya.core
             {
                 yield return filePath;
             }
+
+            var directories = Enumerable.Empty<string>();
+            try
+            {
+                directories = Directory.EnumerateDirectories(path);
+            }
+            catch (UnauthorizedAccessException) { }
 
             foreach (var directoryPath in directories)
             {
