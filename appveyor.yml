@@ -1,7 +1,39 @@
-version: 1.0.{build}
+version: 0.1.{build}
+branches:
+  only:
+  - master
+  - develop
+skip_tags: true
+environment:
+  github_auth_token:
+    secure: vpAA+FeczAwi89rRnwMJFro97U6516TV0/zns7+oQdcCS9/c/o6Xu6gZVVPkbtNN
+configuration:
+- Debug
+- Release
 before_build:
 - ps: nuget restore
 build:
   verbosity: minimal
+after_build:
+- ps: >-
+    $Source = "saya.frontend\bin\x64\Release\saya.frontend.exe"
+    $Target = "saya.exe"
+    if ($env:CONFIGURATION -eq "Release") {
+        Move-Item $Source $Target
+        & 7z a saya.zip $Target
+    }
 test_script:
-- ps: vstest.console /logger:Appveyor /Platform:x64 saya.test\bin\x64\Debug\saya.test.dll
+- ps: >-
+    if ($env:CONFIGURATION -eq "Debug") {
+        vstest.console /logger:Appveyor /Platform:x64 saya.test\bin\x64\Debug\saya.test.dll
+    }
+artifacts:
+- path: saya.zip
+  name: saya
+deploy:
+- provider: GitHub
+  tag: release/v$(appveyor_build_version)
+  auth_token: $(github_auth_token)
+  prerelease: true
+  on:
+    CONFIGURATION: Release
