@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 
@@ -54,32 +52,24 @@ namespace saya.core
                         });
                         break;
                     case ".lnk":
-                        try
+                        var shortcut = new FileUtils.Shortcut(execPath);
+                        if (ShortcutStore.Contains(shortcut))
                         {
-                            var shortcut = new FileUtils.Shortcut(execPath);
-                            if (ShortcutStore.Contains(shortcut))
-                            {
-                                break; // 既に登録済みのショートカット
-                            }
-                            ShortcutStore.Add(shortcut);
-                            Tasks.Add(new ProcessLaunchTask
-                            {
-                                FilePath = execPath,
-                                ExistProcessFilePath = shortcut.TargetPath,
-                                ExistProcessArgument = shortcut.Arguments,
-                            });
+                            break; // 既に登録済みのショートカット
                         }
-                        catch (Exception)
+                        ShortcutStore.Add(shortcut);
+                        Tasks.Add(new ProcessLaunchTask
                         {
-                            // FIXME: ログを出すようになったら元に戻す
-                        }
+                            FilePath = execPath,
+                            ExistProcessFilePath = shortcut.TargetPath,
+                            ExistProcessArgument = shortcut.Arguments,
+                        });
                         break;
                     default:
                         // 拡張子が存在しないか取得に失敗
                         break;
                 }
             }
-
         }
 
         public void Dispose()

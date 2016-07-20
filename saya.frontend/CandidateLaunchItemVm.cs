@@ -8,24 +8,44 @@ namespace saya.frontend
 {
     public class CandidateLaunchItemVm : Vm
     {
-        public readonly core.ILaunchTask LaunchTask;
+        private core.ILaunchTask m_LaunchTask;
+        public core.ILaunchTask LaunchTask
+        {
+            get
+            {
+                return m_LaunchTask;
+            }
+            set
+            {
+                m_LaunchTask = value;
+                if (m_LaunchTask == null)
+                {
+                    IsActive.Value = false;
+                    Name.Value = string.Empty;
+                    Description.Value = string.Empty;
+                }
+                else
+                {
+                    IsActive.Value = true;
+                    Name.Value = m_LaunchTask.Name;
+                    Description.Value = m_LaunchTask.FilePath;
+                }
+            }
+        }
 
         public ReactiveProperty<ImageSource> Icon { get; private set; }
         public ReactiveProperty<string> Name { get; private set; }
         public ReactiveProperty<string> Description { get; private set; }
         public ReactiveProperty<string> ShortcutKey { get; private set; }
+        public ReactiveProperty<bool> IsActive { get; private set; }
 
-        public CandidateLaunchItemVm(
-            core.ILaunchTask task, 
-            string shortcutKeyText,
-            ReactiveProperty<ImageSource> imageSource)
+        public CandidateLaunchItemVm(string shortcutKeyText)
         {
-            LaunchTask = task;
-
-            Icon = imageSource;
-            Name = new ReactiveProperty<string>(task.Name).AddTo(CompositeDisposable);
-            Description = new ReactiveProperty<string>(task.Description).AddTo(CompositeDisposable);
+            Icon = new ReactiveProperty<ImageSource>().AddTo(CompositeDisposable);
+            Name = new ReactiveProperty<string>(string.Empty).AddTo(CompositeDisposable);
+            Description = new ReactiveProperty<string>(string.Empty).AddTo(CompositeDisposable);
             ShortcutKey = new ReactiveProperty<string>(shortcutKeyText).AddTo(CompositeDisposable);
+            IsActive = new ReactiveProperty<bool>().AddTo(CompositeDisposable);
         }
     }
 }

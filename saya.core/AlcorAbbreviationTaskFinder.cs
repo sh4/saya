@@ -1,18 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace saya.core
 {
     public class AlcorAbbreviationTaskFinder : ILaunchTaskFinder
     {
         private readonly int MaxRecentlyUsedPathCount = 30;
-        private Queue<string> RecentlyUsedPath = new Queue<string>();
-        private HashSet<string> RecenflyUsedPathSet = new HashSet<string>();
+        private ConcurrentBag<string> RecentlyUsedPathSet = new ConcurrentBag<string>();
+        private ConcurrentQueue<string> RecentlyPathSetQueue = new ConcurrentQueue<string>();
 
-        public IReadOnlyCollection<string> RecentlyUsedFilePaths => RecentlyUsedPath;
+        public IReadOnlyCollection<string> RecentlyUsedFilePaths => RecentlyUsedPathSet;
         public string Query { set; get; }
 
         public IEnumerable<ScoredLaunchTask> Find(IEnumerable<ILaunchTask> tasks)
@@ -32,17 +30,18 @@ namespace saya.core
 
         public void AddRecentlyUsed(string filePath)
         {
-            RecentlyUsedPath.Enqueue(filePath);
-            if (RecentlyUsedPath.Count > MaxRecentlyUsedPathCount)
+            RecentlyPathSetQueue.Enqueue(filePath);
+            if (RecentlyPathSetQueue.Count > MaxRecentlyUsedPathCount)
             {
-                RecenflyUsedPathSet.Remove(RecentlyUsedPath.Dequeue());
+                string r;
+                RecentlyPathSetQueue.TryDequeue(out r);
             }
-            RecenflyUsedPathSet.Add(filePath);
+            RecentlyUsedPathSet.Add(filePath);
         }
 
         private float Multiplier(ILaunchTask task)
         {
-            if (RecenflyUsedPathSet.Contains(task.FilePath))
+            if (RecentlyUsedPathSet.Contains(task.FilePath))
             {
                 return 2.0f;
             }

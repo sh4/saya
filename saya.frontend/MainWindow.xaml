@@ -84,6 +84,17 @@
                     </Style>
                 </ListView.ItemContainerStyle>
                 -->
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="{x:Type ListViewItem}">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsActive.Value}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListView.ItemContainerStyle>
                 <ListView.ContextMenu>
                     <ContextMenu>
                         <MenuItem Command="{Binding LaunchCandidateItemCommand}" Header="起動" />
@@ -116,8 +127,8 @@
                                                TextWrapping="NoWrap">
                                         <TextBlock.Text>
                                             <MultiBinding Converter="{StaticResource PathTrimmingConverter}">
-                                                <Binding RelativeSource="{RelativeSource Self}" />
                                                 <Binding Path="Description.Value" />
+                                                <Binding RelativeSource="{RelativeSource Self}" />
                                                 <Binding Path="Width" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=Window}" />
                                             </MultiBinding>
                                         </TextBlock.Text>
@@ -146,11 +157,6 @@
 
                     </DataTemplate>
                 </ListView.ItemTemplate>
-                <ListView.ItemContainerStyle>
-                    <Style TargetType="ListViewItem">
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                    </Style>
-                </ListView.ItemContainerStyle>
             </ListView>
         </StackPanel>
     </Border>

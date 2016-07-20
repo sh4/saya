@@ -22,8 +22,12 @@ namespace saya.frontend
 
         public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
-            var textBlock = (TextBlock)values[0];
-            var text = (string)values[1];
+            var text = (string)values[0];
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return text;
+            }
+            var textBlock = (TextBlock)values[1];
             var remainWidth = (double)values[2];
 
             var typeface = new Typeface(textBlock.FontFamily, textBlock.FontStyle, textBlock.FontWeight, textBlock.FontStretch);

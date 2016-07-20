@@ -111,7 +111,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="BackgroundIconUpdater.cs" />
+    <Compile Include="BackgroundSearcher.cs" />
     <Compile Include="HotKey.cs" />
     <Compile Include="Messenger.cs" />
     <Compile Include="PathTrimmingConverter.cs" />

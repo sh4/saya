@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Threading;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Concurrent;
 using Reactive.Bindings;
 using Reactive.Bindings.Extensions;
 using System.Windows.Media;
@@ -12,36 +10,68 @@ using System.Reactive.Disposables;
 
 namespace saya.frontend
 {
-    class BackgroundIconUpdater : IDisposable
+    class BackgroundSearcher : IDisposable
     {
         private readonly ShellIcon ShellIcon;
         private readonly CancellationTokenSource Cts;
-        private readonly ConcurrentDictionary<int, WeakReference> IconUpdateSlots = new ConcurrentDictionary<int, WeakReference>();
         private readonly Task Worker;
         private readonly CompositeDisposable CompositeDisposable = new CompositeDisposable();
 
-        public readonly ReactiveProperty<ImageSource>[] Slots;
-        public readonly ManualResetEventSlim Signal;
+        private readonly int MaxResultsCount = 5;
+        private readonly UserProfileManager ProfileManager = new UserProfileManager();
+        private core.ILaunchTaskRepository TaskRepository = new core.MemoryTaskRepository();
+        private core.AlcorAbbreviationTaskFinder TaskFinder = new core.AlcorAbbreviationTaskFinder();
 
-        public BackgroundIconUpdater(int maxResultsCount)
+        private CandidateLaunchItemVm[] CandidateLaunchItems;
+        private readonly ManualResetEventSlim Signal;
+        private readonly ReactiveProperty<CandidateLaunchItemVm[]> ResultCandidateLaunchItems;
+
+        private string m_Query = string.Empty;
+        public string Query
         {
-            ShellIcon = new ShellIcon().AddTo(CompositeDisposable);
-            Slots = Enumerable.Range(0, maxResultsCount).Select(x =>
+            get { return m_Query; }
+            set
             {
-                return new ReactiveProperty<ImageSource>().AddTo(CompositeDisposable);
-            }).ToArray();
-            Cts = new CancellationTokenSource().AddTo(CompositeDisposable);
-            Signal =  new ManualResetEventSlim().AddTo(CompositeDisposable);
-            Worker = Task.Factory.StartNew(IconUpdateWorker, Cts.Token).AddTo(CompositeDisposable);
+                m_Query = value;
+                Signal.Set();
+            }
         }
 
-        public void UpdateSlot(int index, core.ILaunchTask task)
+        public BackgroundSearcher(ReactiveProperty<CandidateLaunchItemVm[]> candidateLaunchItems)
         {
-            var weakTask = new WeakReference(task);
-            IconUpdateSlots.AddOrUpdate(index, weakTask, (key, _) => weakTask);
+            ResultCandidateLaunchItems = candidateLaunchItems;
+
+            // TODO: ちゃんとした実装に置き換える
+            TaskRepository.Register(new core.StartMenuTaskStore());
+            TaskRepository.Register(new core.EverythingTaskStore());
+            TaskRepository.Sync().Wait();
+
+            ShellIcon = new ShellIcon().AddTo(CompositeDisposable);
+            Cts = new CancellationTokenSource().AddTo(CompositeDisposable);
+            Signal = new ManualResetEventSlim().AddTo(CompositeDisposable);
+
+            // 設定を読み込む
+            ProfileManager.Load();
+            foreach (var path in ProfileManager.Profile.RecentlyUsedFilePath)
+            {
+                TaskFinder.AddRecentlyUsed(path);
+            }
+
+            CandidateLaunchItems = new CandidateLaunchItemVm[MaxResultsCount];
+            for (var i = 0; i < MaxResultsCount; i++)
+            {
+                CandidateLaunchItems[i] = new CandidateLaunchItemVm("Ctrl+" + (i + 1));
+            }
+
+            Worker = Task.Factory.StartNew(FindWorkerLoop, Cts.Token).AddTo(CompositeDisposable);
         }
 
-        private void IconUpdateWorker()
+        public void AddRecentlyUsed(string filePath)
+        {
+            TaskFinder.AddRecentlyUsed(filePath);
+        }
+
+        private void FindWorkerLoop()
         {
             // Vm が Dispose されるまでループは回り続ける
             try
@@ -49,13 +79,7 @@ namespace saya.frontend
                 while (true)
                 {
                     Signal.Reset();
-                    foreach (var slot in IconUpdateSlots)
-                    {
-                        if (slot.Value.IsAlive)
-                        {
-                            Slots[slot.Key].Value = GetIconImageSource(slot.Value.Target as core.ILaunchTask);
-                        }
-                    }
+                    ExecuteSearch();
                     Signal.Wait(Cts.Token);
                 }
             }
@@ -66,7 +90,6 @@ namespace saya.frontend
 
             Dispatcher.CurrentDispatcher.BeginInvokeShutdown(DispatcherPriority.SystemIdle);
             Dispatcher.Run();
-
         }
 
         private ImageSource GetIconImageSource(core.ILaunchTask task)
@@ -86,7 +109,32 @@ namespace saya.frontend
             }
         }
 
+        private void ExecuteSearch()
+        {
+            TaskFinder.Query = Query;
 
+            // 検索スコアの降順に並び替え
+            var launchItems = TaskRepository
+                .Find(TaskFinder)
+                .OrderByDescending(y => y.Score)
+                .Take(MaxResultsCount)
+                .Select(y => y.LaunchTask);
+
+            // 検索結果を現在のバッファに設定
+            var i = 0;
+            var items = CandidateLaunchItems;
+            foreach (var launchItem in launchItems)
+            {
+                items[i].LaunchTask = launchItem;
+                items[i].Icon.Value = GetIconImageSource(launchItem);
+                i++;
+            }
+            for (; i < MaxResultsCount; i++)
+            {
+                items[i].LaunchTask = null;
+            }
+            ResultCandidateLaunchItems.Value = items;
+        }
 
         #region IDisposable Support
         private bool disposedValue = false; // 重複する呼び出しを検出するには
@@ -97,6 +145,9 @@ namespace saya.frontend
             {
                 if (disposing)
                 {
+                    // 設定の書き出し
+                    ProfileManager.Profile.RecentlyUsedFilePath = TaskFinder.RecentlyUsedFilePaths.ToList();
+                    ProfileManager.Save();
                     // TODO: マネージ状態を破棄します (マネージ オブジェクト)。
                     Cts.Cancel();
                     Worker.Wait();

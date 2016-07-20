@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Reactive.Disposables;
 using Reactive.Bindings;
 using Reactive.Bindings.Extensions;
 using System.Windows.Input;
@@ -25,82 +24,22 @@ namespace saya.frontend
         public ReactiveCommand OpenCandidateItemPathCommand { get; private set; }
         public ReactiveCommand CopyPathCommand { get; private set; }
 
-        private readonly int MaxResultsCount = 5;
-        private readonly TimeSpan CommandSampleTime = TimeSpan.FromSeconds(0.1);
-        private core.ILaunchTaskRepository TaskRepository = new core.MemoryTaskRepository();
-        private core.AlcorAbbreviationTaskFinder TaskFinder = new core.AlcorAbbreviationTaskFinder();
-        private readonly BackgroundIconUpdater IconUpdater;
-        private readonly UserProfileManager ProfileManager = new UserProfileManager();
-
-        private CompositeDisposable ResultCompositeDisposable = new CompositeDisposable();
+        private readonly CandidateLaunchItemVm[] EmptyCandidateLaunchItems = new CandidateLaunchItemVm[] { };
+        private readonly BackgroundSearcher Searcher;
 
         public MainWindowVm()
         {
-            ProfileManager.Load();
-            foreach (var path in ProfileManager.Profile.RecentlyUsedFilePath)
-            {
-                TaskFinder.AddRecentlyUsed(path);
-            }
-
-            // TODO: ちゃんとした実装に置き換える
-            TaskRepository.Register(new core.StartMenuTaskStore());
-            TaskRepository.Register(new core.EverythingTaskStore());
-
-            Scan();
-
             CommandText = new ReactiveProperty<string>().AddTo(CompositeDisposable);
-            CandidateLaunchItems = CommandText
+            CommandText
                 .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Sample(CommandSampleTime)
-                .Select(x =>
-                {
-                    // 前回の検索結果を破棄する
-                    ResetResultCompositeDisposable();
-
-                    var sw = System.Diagnostics.Stopwatch.StartNew();
-
-                    TaskFinder.Query = x;
-
-                    // 検索スコアの降順に並び替え
-                    var launchItems = TaskRepository
-                        .Find(TaskFinder);
-                    
-                    var resultLaunchItems = launchItems
-                        .OrderByDescending(y => y.Score)
-                        .Take(MaxResultsCount)
-                        .Select(y => y.LaunchTask);
-
-                    // 新しい検索結果を次回の Dispose 対象とする
-                    var results = resultLaunchItems
-                        .Select((y, i) =>
-                        {
-                            var vm = new CandidateLaunchItemVm(
-                                y,
-                                "Ctrl+" + (i + 1),
-                                IconUpdater.Slots[i]
-                            ).AddTo(ResultCompositeDisposable);
-                            // アイコンの更新を予約
-                            IconUpdater.UpdateSlot(i, y);
-                            return vm;
-                        })
-                        .ToArray();
-
-                    sw.Stop();
-                    Console.WriteLine($"{x} => {sw.ElapsedMilliseconds}ms ({launchItems.Count()} items)");
-
-                    return results;
-                })
-                .ToReactiveProperty()
+                .Subscribe(x => Searcher.Query = x)
                 .AddTo(CompositeDisposable);
 
-            // 検索結果が更新されたら最初の項目を選択済み状態にする
+            CandidateLaunchItems = new ReactiveProperty<CandidateLaunchItemVm[]>().AddTo(CompositeDisposable);
             CandidateLaunchItems
                 .Where(x => x != null)
-                .Subscribe(items =>
-                {
-                    IconUpdater.Signal.Set();
-                    SelectedCandidateLaunchItem.Value = items.FirstOrDefault();
-                });
+                // 検索結果が更新されたら最初の項目を選択済み状態にする
+                .Subscribe(items => SelectedCandidateLaunchItem.Value = items.FirstOrDefault());
 
 
             SelectedCandidateLaunchItem = new ReactiveProperty<CandidateLaunchItemVm>()
@@ -143,7 +82,7 @@ namespace saya.frontend
                 });
 
             ScanCommand = new ReactiveCommand().AddTo(CompositeDisposable);
-            ScanCommand.Subscribe(_ => Scan());
+            //ScanCommand.Subscribe(_ => Scan());
 
             OpenCandidateItemPathCommand = SelectedCandidateLaunchItem
                 .Select(x => x != null && x.LaunchTask != null)
@@ -176,8 +115,7 @@ namespace saya.frontend
                 System.Windows.Clipboard.SetText(task.FilePath);
             });
 
-            CompositeDisposable.Add(ResultCompositeDisposable);
-            IconUpdater = new BackgroundIconUpdater(MaxResultsCount).AddTo(CompositeDisposable);
+            Searcher = new BackgroundSearcher(CandidateLaunchItems).AddTo(CompositeDisposable);
 
             // ショートカットキー
             var toggleKey = new KeyGesture(Key.Tab, ModifierKeys.Control);
@@ -189,12 +127,6 @@ namespace saya.frontend
 
             // View からのメッセージによるランチャー起動
             Messenger.Default.Register<MainWindow.LaunchMessage>(_ => LaunchItem(SelectedCandidateLaunchItem.Value));
-            // View からの終了メッセージによる後処理
-            Messenger.Default.Register<MainWindow.ExitMessage>(_ =>
-            {
-                ProfileManager.Profile.RecentlyUsedFilePath = TaskFinder.RecentlyUsedFilePaths.ToList();
-                ProfileManager.Save();
-            });
         }
 
         private void EnsureSelectNextItem(IEnumerable<CandidateLaunchItemVm> items)
@@ -210,7 +142,9 @@ namespace saya.frontend
         {
             var task = itemVm.LaunchTask;
             task.Launch();
-            TaskFinder.AddRecentlyUsed(task.FilePath);
+
+            Searcher.AddRecentlyUsed(task.FilePath);
+
             ClearCandidateItems();
             Close();
         }
@@ -218,9 +152,8 @@ namespace saya.frontend
         private void ClearCandidateItems()
         {
             // 検索結果のクリア
-            ResetResultCompositeDisposable();
             CommandText.Value = string.Empty;
-            CandidateLaunchItems.Value = new CandidateLaunchItemVm[] { };
+            CandidateLaunchItems.Value = EmptyCandidateLaunchItems;
         }
 
         private void Close()
@@ -228,22 +161,11 @@ namespace saya.frontend
             Messenger.Default.Send(new MainWindow.CloseMessage());
         }
 
-        private void ResetResultCompositeDisposable()
-        {
-            ResultCompositeDisposable.Dispose();
-            ResultCompositeDisposable = new CompositeDisposable();
-        }
-
         private CandidateLaunchItemVm GetNextCandidateItem(IEnumerable<CandidateLaunchItemVm> items)
         {
             var selectedItem = SelectedCandidateLaunchItem.Value;
             var nextItem = items.SkipWhile(x => x != selectedItem).Skip(1).FirstOrDefault();
             return nextItem;
-        }
-
-        private void Scan()
-        {
-            TaskRepository.Sync().Wait();
         }
     }
 }
