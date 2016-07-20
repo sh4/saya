@@ -1,0 +1,7 @@
+version: 1.0.{build}
+before_build:
+- ps: nuget restore
+build:
+  verbosity: minimal
+test_script:
+- ps: vstest.console /logger:Appveyor /Platform:x64 saya.test\bin\x64\Debug\saya.test.dll
