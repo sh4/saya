@@ -17,7 +17,9 @@ build:
 after_build:
 - ps: >-
     $Source = "saya.frontend\bin\x64\Release\saya.frontend.exe"
+
     $Target = "saya.exe"
+
     if ($env:CONFIGURATION -eq "Release") {
         Move-Item $Source $Target
         & 7z a saya.zip $Target
