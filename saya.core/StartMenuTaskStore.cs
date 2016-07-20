@@ -59,7 +59,7 @@ namespace saya.core
                             var shortcut = new FileUtils.Shortcut(execPath);
                             if (ShortcutStore.Contains(shortcut))
                             {
-                                return; // 既に登録済みのショートカット
+                                break; // 既に登録済みのショートカット
                             }
                             ShortcutStore.Add(shortcut);
                             Tasks.Add(new ProcessLaunchTask
